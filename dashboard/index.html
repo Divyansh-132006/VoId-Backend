@@ -6,125 +6,313 @@
   <title>VoiceShield Dashboard</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: system-ui, sans-serif;
-      color: #1f2937;
-      background: #f3f4f6;
+      color-scheme: dark;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: #e7edf3;
+      background: #0b1117;
+      --page: #0b1117;
+      --panel: #111a23;
+      --panel-raised: #17232e;
+      --line: #263542;
+      --muted: #8e9eac;
+      --soft: #b9c6d0;
+      --cyan: #67d4d0;
+      --cyan-dim: rgba(103, 212, 208, 0.12);
+      --amber: #e8b86a;
+      --red: #ed8d84;
+      --green: #85d3a0;
     }
 
+    * { box-sizing: border-box; }
+
+    html { min-width: 320px; }
+
     body {
-      max-width: 72rem;
+      min-height: 100vh;
       margin: 0 auto;
-      padding: 2rem 1rem 3rem;
+      padding: 2.5rem clamp(1rem, 4vw, 4rem) 4rem;
+      background:
+        radial-gradient(circle at 90% 0%, rgba(70, 131, 140, 0.14), transparent 28rem),
+        linear-gradient(145deg, #0b1117 0%, #0d151d 52%, #0b1117 100%);
+    }
+
+    .shell { max-width: 112rem; margin: 0 auto; }
+
+    .eyebrow {
+      margin: 0 0 0.75rem;
+      color: var(--cyan);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--line);
     }
 
     h1 {
       margin: 0;
+      color: #f6fafc;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 650;
+      letter-spacing: -0.04em;
+      line-height: 0.98;
     }
 
     .subtitle {
-      color: #4b5563;
+      max-width: 38rem;
+      margin: 0.9rem 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.55;
     }
 
     .toolbar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: flex-end;
       gap: 1rem;
-      margin: 1.5rem 0;
+      min-width: 14rem;
     }
+
+    #updated { color: var(--muted); font-size: 0.82rem; text-align: right; }
 
     button {
-      padding: 0.6rem 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.7rem 0.95rem;
       cursor: pointer;
-      border: 1px solid #374151;
-      border-radius: 4px;
-      background: #fff;
+      border: 1px solid #3b5968;
+      border-radius: 6px;
+      color: #dff8f6;
+      background: var(--cyan-dim);
       font: inherit;
+      font-size: 0.84rem;
+      font-weight: 650;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
     }
 
-    .grid {
+    button::before { content: "↻"; font-size: 1.05rem; line-height: 0; }
+    button:hover { border-color: var(--cyan); background: rgba(103, 212, 208, 0.2); }
+    button:active { transform: translateY(1px); }
+
+    .summary {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 1.25rem 0 2rem;
+    }
+
+    .metric {
+      min-height: 7.5rem;
+      padding: 1.1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(145deg, rgba(23, 35, 46, 0.94), rgba(17, 26, 35, 0.94));
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 0.85rem;
+      color: #f6fafc;
+      font-size: 2rem;
+      font-weight: 650;
+      line-height: 1;
+    }
+
+    .metric-detail { display: block; margin-top: 0.55rem; color: var(--muted); font-size: 0.75rem; }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
       gap: 1rem;
+      margin: 0 0 0.8rem;
     }
 
-    section {
-      overflow: auto;
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-    }
+    .section-heading h2 { margin: 0; color: #f3f7f9; font-size: 1rem; font-weight: 650; }
+    .section-heading span { color: var(--muted); font-size: 0.75rem; }
 
-    h2 {
-      margin: 0;
-      padding: 1rem;
-      font-size: 1.1rem;
-      border-bottom: 1px solid #e5e7eb;
-    }
+    section:first-child { grid-row: span 2; }
+    .section-inner { padding: 1.1rem 1.1rem 0; }
 
     table {
-      width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      width: 100%;
+      font-size: 0.8rem;
     }
 
     th,
     td {
-      padding: 0.65rem 0.75rem;
+      padding: 0.8rem 0.75rem;
       text-align: left;
       vertical-align: top;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid rgba(38, 53, 66, 0.75);
       white-space: nowrap;
     }
 
     th {
-      color: #4b5563;
-      font-weight: 600;
-      background: #f9fafb;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: rgba(23, 35, 46, 0.75);
     }
 
-    .empty,
-    #error {
-      padding: 1rem;
+    tbody tr { transition: background 140ms ease; }
+    tbody tr:hover { background: rgba(103, 212, 208, 0.045); }
+    tbody tr:last-child td { border-bottom: 0; }
+    td:first-child { color: var(--soft); }
+    .cell-id { color: var(--cyan); font-family: Consolas, monospace; font-size: 0.75rem; }
+
+    .status,
+    .risk,
+    .result {
+      display: inline-block;
+      padding: 0.28rem 0.48rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 750;
+      letter-spacing: 0.04em;
+    }
+
+    .status { color: var(--amber); background: rgba(232, 184, 106, 0.12); }
+    .status-connected { color: var(--green); background: rgba(133, 211, 160, 0.12); }
+    .status-ended { color: var(--muted); background: rgba(142, 158, 172, 0.12); }
+    .risk-safe, .result-passed { color: var(--green); background: rgba(133, 211, 160, 0.12); }
+    .risk-suspicious, .result-inconclusive, .result-timeout { color: var(--amber); background: rgba(232, 184, 106, 0.12); }
+    .risk-high, .result-failed { color: var(--red); background: rgba(237, 141, 132, 0.12); }
+
+    .empty {
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+      font-size: 0.84rem;
+      text-align: center;
     }
 
     #error {
-      color: #991b1b;
+      margin: 1.25rem 0;
+      padding: 0.85rem 1rem;
+      border: 1px solid rgba(237, 141, 132, 0.35);
+      border-radius: 6px;
+      color: #ffd0ca;
+      background: rgba(237, 141, 132, 0.1);
+      font-size: 0.84rem;
+    }
+
+    @media (max-width: 900px) {
+      .hero { align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: space-between; width: 100%; }
+      .grid { grid-template-columns: 1fr; }
+      section:first-child { grid-row: auto; }
+    }
+
+    @media (max-width: 620px) {
+      body { padding: 1.5rem 0.8rem 2.5rem; }
+      .hero { padding-bottom: 1.5rem; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1.5rem; }
+      .metric { min-height: 6.5rem; padding: 0.9rem; }
+      .metric-value { font-size: 1.65rem; }
+      section { border-radius: 6px; }
+      .section-inner { padding: 0.9rem 0.8rem 0; }
     }
   </style>
 </head>
 <body>
-  <h1>VoiceShield Dashboard</h1>
-  <p class="subtitle">Call and security metadata for the MVP demo.</p>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Operations / Voice security</p>
+        <h1>VoiceShield</h1>
+        <p class="subtitle">A live view of call activity, security signals, and challenge outcomes.</p>
+      </div>
+      <div class="toolbar">
+        <span id="updated">Loading...</span>
+        <button id="refresh" type="button">Refresh data</button>
+      </div>
+    </header>
 
-  <div class="toolbar">
-    <span id="updated">Loading...</span>
-    <button id="refresh" type="button">Refresh</button>
-  </div>
+    <div class="summary" aria-label="Dashboard summary">
+      <div class="metric">
+        <span class="metric-label">Tracked calls</span>
+        <strong class="metric-value" id="callCount">--</strong>
+        <span class="metric-detail">Latest 50 records</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Active calls</span>
+        <strong class="metric-value" id="activeCallCount">--</strong>
+        <span class="metric-detail">Waiting or connecting</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">High risk signals</span>
+        <strong class="metric-value" id="highRiskCount">--</strong>
+        <span class="metric-detail">From loaded events</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Challenges</span>
+        <strong class="metric-value" id="challengeCount">--</strong>
+        <span class="metric-detail">Recorded challenge events</span>
+      </div>
+    </div>
 
-  <div id="error" hidden></div>
+    <div id="error" hidden></div>
 
-  <div class="grid">
-    <section>
-      <h2>Calls</h2>
-      <div id="calls"></div>
-    </section>
+    <div class="grid">
+      <section>
+        <div class="section-inner">
+          <div class="section-heading">
+            <h2>Call activity</h2>
+            <span>Most recent first</span>
+          </div>
+          <div id="calls"></div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Latest Risk and Security Events</h2>
-      <div id="events"></div>
-    </section>
+      <section>
+        <div class="section-inner">
+          <div class="section-heading">
+            <h2>Risk and security events</h2>
+            <span>Latest signals</span>
+          </div>
+          <div id="events"></div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Challenge Events</h2>
-      <div id="challengeEvents"></div>
-    </section>
-  </div>
+      <section>
+        <div class="section-inner">
+          <div class="section-heading">
+            <h2>Challenge activity</h2>
+            <span>Verification trail</span>
+          </div>
+          <div id="challengeEvents"></div>
+        </div>
+      </section>
+    </div>
+  </main>
 
   <script>
     const updated = document.querySelector('#updated');
     const error = document.querySelector('#error');
+    const callCount = document.querySelector('#callCount');
+    const activeCallCount = document.querySelector('#activeCallCount');
+    const highRiskCount = document.querySelector('#highRiskCount');
+    const challengeCount = document.querySelector('#challengeCount');
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>'"]/g, (character) => ({
@@ -145,35 +333,49 @@
         target.innerHTML = `<div class="empty">${emptyMessage}</div>`;
         return;
       }
-      target.innerHTML = `<table><thead><tr>${columns.map((column) => `<th>${column.label}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(column.value(row))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      target.innerHTML = `<table><thead><tr>${columns.map((column) => `<th>${column.label}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${column.render ? column.render(row) : escapeHtml(column.value(row))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+
+    function badge(value, className, prefix = '') {
+      const text = value || '-';
+      const classValue = text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      return `<span class="${className} ${className}-${classValue}">${escapeHtml(prefix + text)}</span>`;
     }
 
     function render(data) {
+      const calls = data.calls || [];
+      const events = data.events || [];
+      const challengeEvents = data.challengeEvents || [];
+      callCount.textContent = calls.length;
+      activeCallCount.textContent = calls.filter((row) => row.status === 'WAITING' || row.status === 'CONNECTING').length;
+      highRiskCount.textContent = events.filter((row) => row.risk_level === 'HIGH').length;
+      challengeCount.textContent = challengeEvents.length;
+
       renderTable(document.querySelector('#calls'), [
-        { label: 'Call', value: (row) => row.id },
-        { label: 'Caller', value: (row) => row.caller_id },
-        { label: 'Receiver', value: (row) => row.receiver_id || '-' },
-        { label: 'Status', value: (row) => row.status },
+        { label: 'Call', value: (row) => row.id, render: (row) => `<span class="cell-id">${escapeHtml(row.id)}</span>` },
+        { label: 'Caller phone / ID', value: (row) => row.caller_id || 'Not provided' },
+        { label: 'Receiver phone / ID', value: (row) => row.receiver_id || 'Not provided' },
+        { label: 'Status', value: (row) => row.status, render: (row) => badge(row.status, 'status') },
         { label: 'Created', value: (row) => formatTime(row.created_at) }
-      ], data.calls, 'No calls recorded.');
+      ], calls, 'No calls recorded.');
 
       const eventColumns = [
         { label: 'Time', value: (row) => formatTime(row.timestamp) },
         { label: 'Event', value: (row) => row.event_type },
-        { label: 'Risk', value: (row) => row.risk_level || '-' },
+        { label: 'Risk', value: (row) => row.risk_level || '-', render: (row) => row.risk_level ? badge(row.risk_level, 'risk') : '-' },
         { label: 'Score', value: (row) => row.risk_score ?? '-' },
         { label: 'Call', value: (row) => row.call_id },
         { label: 'Device', value: (row) => row.device_id }
       ];
-      renderTable(document.querySelector('#events'), eventColumns, data.events, 'No events recorded.');
+      renderTable(document.querySelector('#events'), eventColumns, events, 'No events recorded.');
 
       renderTable(document.querySelector('#challengeEvents'), [
         { label: 'Time', value: (row) => formatTime(row.timestamp) },
         { label: 'Event', value: (row) => row.event_type },
         { label: 'Challenge', value: (row) => row.challenge_id || '-' },
-        { label: 'Result', value: (row) => row.challenge_result || '-' },
+        { label: 'Result', value: (row) => row.challenge_result || '-', render: (row) => row.challenge_result ? badge(row.challenge_result, 'result') : '-' },
         { label: 'Call', value: (row) => row.call_id }
-      ], data.challengeEvents, 'No challenge events recorded.');
+      ], challengeEvents, 'No challenge events recorded.');
     }
 
     async function loadDashboard() {
