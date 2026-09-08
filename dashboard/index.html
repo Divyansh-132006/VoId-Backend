@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VoiceShield Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, sans-serif;
+      color: #1f2937;
+      background: #f3f4f6;
+    }
+
+    body {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    h1 {
+      margin: 0;
+    }
+
+    .subtitle {
+      color: #4b5563;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    button {
+      padding: 0.6rem 0.9rem;
+      cursor: pointer;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      background: #fff;
+      font: inherit;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+      gap: 1rem;
+    }
+
+    section {
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+    }
+
+    h2 {
+      margin: 0;
+      padding: 1rem;
+      font-size: 1.1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      padding: 0.65rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+    }
+
+    th {
+      color: #4b5563;
+      font-weight: 600;
+      background: #f9fafb;
+    }
+
+    .empty,
+    #error {
+      padding: 1rem;
+    }
+
+    #error {
+      color: #991b1b;
+    }
+  </style>
+</head>
+<body>
+  <h1>VoiceShield Dashboard</h1>
+  <p class="subtitle">Call and security metadata for the MVP demo.</p>
+
+  <div class="toolbar">
+    <span id="updated">Loading...</span>
+    <button id="refresh" type="button">Refresh</button>
+  </div>
+
+  <div id="error" hidden></div>
+
+  <div class="grid">
+    <section>
+      <h2>Calls</h2>
+      <div id="calls"></div>
+    </section>
+
+    <section>
+      <h2>Latest Risk and Security Events</h2>
+      <div id="events"></div>
+    </section>
+
+    <section>
+      <h2>Challenge Events</h2>
+      <div id="challengeEvents"></div>
+    </section>
+  </div>
+
+  <script>
+    const updated = document.querySelector('#updated');
+    const error = document.querySelector('#error');
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[character]));
+    }
+
+    function formatTime(timestamp) {
+      return new Date(timestamp).toLocaleString();
+    }
+
+    function renderTable(target, columns, rows, emptyMessage) {
+      if (rows.length === 0) {
+        target.innerHTML = `<div class="empty">${emptyMessage}</div>`;
+        return;
+      }
+      target.innerHTML = `<table><thead><tr>${columns.map((column) => `<th>${column.label}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${columns.map((column) => `<td>${escapeHtml(column.value(row))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+
+    function render(data) {
+      renderTable(document.querySelector('#calls'), [
+        { label: 'Call', value: (row) => row.id },
+        { label: 'Caller', value: (row) => row.caller_id },
+        { label: 'Receiver', value: (row) => row.receiver_id || '-' },
+        { label: 'Status', value: (row) => row.status },
+        { label: 'Created', value: (row) => formatTime(row.created_at) }
+      ], data.calls, 'No calls recorded.');
+
+      const eventColumns = [
+        { label: 'Time', value: (row) => formatTime(row.timestamp) },
+        { label: 'Event', value: (row) => row.event_type },
+        { label: 'Risk', value: (row) => row.risk_level || '-' },
+        { label: 'Score', value: (row) => row.risk_score ?? '-' },
+        { label: 'Call', value: (row) => row.call_id },
+        { label: 'Device', value: (row) => row.device_id }
+      ];
+      renderTable(document.querySelector('#events'), eventColumns, data.events, 'No events recorded.');
+
+      renderTable(document.querySelector('#challengeEvents'), [
+        { label: 'Time', value: (row) => formatTime(row.timestamp) },
+        { label: 'Event', value: (row) => row.event_type },
+        { label: 'Challenge', value: (row) => row.challenge_id || '-' },
+        { label: 'Result', value: (row) => row.challenge_result || '-' },
+        { label: 'Call', value: (row) => row.call_id }
+      ], data.challengeEvents, 'No challenge events recorded.');
+    }
+
+    async function loadDashboard() {
+      error.hidden = true;
+      updated.textContent = 'Loading...';
+      try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error?.message || `HTTP ${response.status}`);
+        }
+        render(data);
+        updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      } catch (requestError) {
+        error.textContent = requestError.message;
+        error.hidden = false;
+        updated.textContent = 'Unable to load dashboard';
+      }
+    }
+
+    document.querySelector('#refresh').addEventListener('click', loadDashboard);
+    loadDashboard();
+  </script>
+</body>
+</html>

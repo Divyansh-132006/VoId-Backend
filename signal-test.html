@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VoiceShield Signal Test</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, sans-serif;
+    }
+
+    body {
+      max-width: 44rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #1f2937;
+    }
+
+    h1 {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin: 0.75rem 0 0.25rem;
+      font-weight: 600;
+    }
+
+    input,
+    button {
+      box-sizing: border-box;
+      font: inherit;
+      padding: 0.6rem 0.75rem;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid #9ca3af;
+      border-radius: 4px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      background: #f3f4f6;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    #status {
+      margin: 1rem 0;
+      font-weight: 600;
+    }
+
+    pre {
+      min-height: 12rem;
+      overflow: auto;
+      padding: 1rem;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 4px;
+    }
+
+    section {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #d1d5db;
+    }
+
+    #eventResponse {
+      min-height: 6rem;
+    }
+
+    #callResponse {
+      min-height: 6rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>VoiceShield Signal Test</h1>
+
+  <label for="roomId">Room ID</label>
+  <input id="roomId" name="roomId" autocomplete="off" placeholder="shared-room">
+
+  <label for="deviceId">Device ID</label>
+  <input id="deviceId" name="deviceId" autocomplete="off" placeholder="phone-1">
+
+  <div class="actions">
+    <button id="connect" type="button">Connect</button>
+    <button id="join" type="button" disabled>Join</button>
+    <button id="leave" type="button" disabled>Leave</button>
+  </div>
+
+  <div id="status">Disconnected</div>
+  <pre id="log" aria-live="polite"></pre>
+
+  <section aria-labelledby="callHeading">
+    <h2 id="callHeading">Create Call</h2>
+
+    <label for="callerId">Caller ID</label>
+    <input id="callerId" name="callerId" autocomplete="off" value="phone-1">
+
+    <label for="receiverId">Receiver ID</label>
+    <input id="receiverId" name="receiverId" autocomplete="off" value="phone-2">
+
+    <div class="actions">
+      <button id="createCall" type="button">Create Call</button>
+    </div>
+
+    <pre id="callResponse" aria-live="polite"></pre>
+  </section>
+
+  <section aria-labelledby="eventHeading">
+    <h2 id="eventHeading">Test Event</h2>
+
+    <label for="eventCallId">Call ID</label>
+    <input id="eventCallId" name="eventCallId" autocomplete="off" placeholder="call_...">
+
+    <label for="eventDeviceId">Device ID</label>
+    <input id="eventDeviceId" name="eventDeviceId" autocomplete="off" placeholder="phone-1">
+
+    <label for="eventType">Event</label>
+    <input id="eventType" name="eventType" autocomplete="off" value="RISK_CHANGED" placeholder="RISK_CHANGED">
+
+    <label for="eventTimestamp">Timestamp</label>
+    <input id="eventTimestamp" name="eventTimestamp" type="number" inputmode="numeric">
+
+    <label for="eventRiskScore">Risk Score</label>
+    <input id="eventRiskScore" name="eventRiskScore" type="number" min="0" max="1" step="any" placeholder="0.82">
+
+    <label for="eventRiskLevel">Risk Level</label>
+    <input id="eventRiskLevel" name="eventRiskLevel" autocomplete="off" placeholder="HIGH">
+
+    <label for="eventModelVersion">Model Version</label>
+    <input id="eventModelVersion" name="eventModelVersion" autocomplete="off" placeholder="voiceguard-v1">
+
+    <div class="actions">
+      <button id="sendEvent" type="button">Send Event</button>
+    </div>
+
+    <pre id="eventResponse" aria-live="polite"></pre>
+  </section>
+
+  <script>
+    let socket;
+    const roomId = document.querySelector('#roomId');
+    const deviceId = document.querySelector('#deviceId');
+    const connectButton = document.querySelector('#connect');
+    const joinButton = document.querySelector('#join');
+    const leaveButton = document.querySelector('#leave');
+    const status = document.querySelector('#status');
+    const log = document.querySelector('#log');
+    const callerId = document.querySelector('#callerId');
+    const receiverId = document.querySelector('#receiverId');
+    const createCallButton = document.querySelector('#createCall');
+    const callResponse = document.querySelector('#callResponse');
+    const eventCallId = document.querySelector('#eventCallId');
+    const eventDeviceId = document.querySelector('#eventDeviceId');
+    const eventType = document.querySelector('#eventType');
+    const eventTimestamp = document.querySelector('#eventTimestamp');
+    const eventRiskScore = document.querySelector('#eventRiskScore');
+    const eventRiskLevel = document.querySelector('#eventRiskLevel');
+    const eventModelVersion = document.querySelector('#eventModelVersion');
+    const sendEventButton = document.querySelector('#sendEvent');
+    const eventResponse = document.querySelector('#eventResponse');
+
+    eventTimestamp.value = Date.now();
+
+    function writeLog(label, value) {
+      const line = typeof value === 'string' ? value : JSON.stringify(value);
+      log.textContent += `[${new Date().toISOString()}] ${label}: ${line}\n`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function setConnected(connected) {
+      connectButton.disabled = connected;
+      joinButton.disabled = !connected;
+      leaveButton.disabled = !connected;
+      status.textContent = connected ? 'Connected' : 'Disconnected';
+    }
+
+    connectButton.addEventListener('click', () => {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        return;
+      }
+
+      const url = `ws://${window.location.host}/signal`;
+      writeLog('connecting', url);
+      socket = new WebSocket(url);
+      socket.addEventListener('open', () => {
+        setConnected(true);
+        writeLog('open', 'WebSocket connected');
+      });
+      socket.addEventListener('message', (event) => {
+        try {
+          writeLog('received', JSON.parse(event.data));
+        } catch {
+          writeLog('received', event.data);
+        }
+      });
+      socket.addEventListener('close', (event) => {
+        setConnected(false);
+        writeLog('close', `code=${event.code} reason=${event.reason || '(none)'}`);
+      });
+      socket.addEventListener('error', () => {
+        writeLog('error', 'WebSocket error');
+      });
+    });
+
+    joinButton.addEventListener('click', () => {
+      const message = {
+        type: 'join',
+        roomId: roomId.value.trim(),
+        deviceId: deviceId.value.trim()
+      };
+      socket.send(JSON.stringify(message));
+      writeLog('sent', message);
+    });
+
+    leaveButton.addEventListener('click', () => {
+      const message = {
+        type: 'leave',
+        roomId: roomId.value.trim(),
+        deviceId: deviceId.value.trim()
+      };
+      socket.send(JSON.stringify(message));
+      writeLog('sent', message);
+    });
+
+    createCallButton.addEventListener('click', async () => {
+      const body = {
+        callerId: callerId.value.trim(),
+        receiverId: receiverId.value.trim()
+      };
+
+      createCallButton.disabled = true;
+      callResponse.textContent = 'Creating call...';
+      try {
+        const response = await fetch('/api/calls', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const responseText = await response.text();
+        let responseBody;
+        try {
+          responseBody = JSON.parse(responseText);
+        } catch {
+          responseBody = responseText;
+        }
+        callResponse.textContent = `HTTP ${response.status}\n${JSON.stringify(responseBody, null, 2)}`;
+        if (response.ok && responseBody && typeof responseBody.callId === 'string') {
+          eventCallId.value = responseBody.callId;
+        }
+      } catch (error) {
+        callResponse.textContent = `Request failed\n${error.message}`;
+      } finally {
+        createCallButton.disabled = false;
+      }
+    });
+
+    sendEventButton.addEventListener('click', async () => {
+      const body = {
+        callId: eventCallId.value.trim(),
+        deviceId: eventDeviceId.value.trim(),
+        event: eventType.value.trim(),
+        timestamp: Number(eventTimestamp.value)
+      };
+
+      if (eventRiskScore.value.trim() !== '') {
+        body.riskScore = Number(eventRiskScore.value);
+      }
+      if (eventRiskLevel.value.trim() !== '') {
+        body.riskLevel = eventRiskLevel.value.trim();
+      }
+      if (eventModelVersion.value.trim() !== '') {
+        body.modelVersion = eventModelVersion.value.trim();
+      }
+
+      sendEventButton.disabled = true;
+      eventResponse.textContent = 'Sending...';
+      try {
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const responseText = await response.text();
+        let responseBody;
+        try {
+          responseBody = JSON.parse(responseText);
+        } catch {
+          responseBody = responseText;
+        }
+        eventResponse.textContent = `HTTP ${response.status}\n${JSON.stringify(responseBody, null, 2)}`;
+      } catch (error) {
+        eventResponse.textContent = `Request failed\n${error.message}`;
+      } finally {
+        sendEventButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
