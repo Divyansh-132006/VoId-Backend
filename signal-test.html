@@ -197,7 +197,8 @@
         return;
       }
 
-      const url = `ws://${window.location.host}/signal`;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const url = `${protocol}://${window.location.host}/signal`;
       writeLog('connecting', url);
       socket = new WebSocket(url);
       socket.addEventListener('open', () => {
